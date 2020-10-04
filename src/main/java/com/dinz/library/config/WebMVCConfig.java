@@ -14,37 +14,27 @@ import com.dinz.library.model.Admin;
 import com.dinz.library.model.Book;
 
 @Configuration
-//@EnableWebMvc
 public class WebMVCConfig implements WebMvcConfigurer {
 
-    @Autowired
-    AdminLoginInterceptor adminLoginInterceptor;
+	@Autowired
+	AdminLoginInterceptor adminLoginInterceptor;
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(adminLoginInterceptor)
-                .addPathPatterns("/api/admin/**")
-                .excludePathPatterns("/api/admin/login", "/api/admin/test");
-    }
+	@Override
+	public void addInterceptors(InterceptorRegistry registry) {
+		registry.addInterceptor(adminLoginInterceptor).addPathPatterns("/api/admin/**")
+				.excludePathPatterns("/api/admin/login", "/api/admin/test");
+	}
 
-    @Override
-    public void addResourceHandlers(final ResourceHandlerRegistry registry) {
-//        registry.addResourceHandler("/**")//
-//                .addResourceLocations("file:src/main/resources/static/")//
-//                .setCachePeriod(0);
-//        registry.addResourceHandler("/ts/**")//
-//                .addResourceLocations("file:src/main/resources/ts/")//
-//                .setCachePeriod(0);
-        final ResourceResolver resolver = new ReactResourceResolver();
-        registry.addResourceHandler("/**").addResourceLocations("")
-                .resourceChain(true)
-                .addResolver(resolver);
-        registry.addResourceHandler("/admin/images/**")//
-                .addResourceLocations("file:" + Admin.PATH_AVARTAR_ADMIN_USER.toFile().getPath() + File.separator)//
-                .setCachePeriod(0);
-        registry.addResourceHandler("/book/images/**")//
-                .addResourceLocations("file:" + Book.PATH_BOOK_COVER.toFile().getPath() + File.separator)//
-                .setCachePeriod(0);
-    }
+	@Override
+	public void addResourceHandlers(final ResourceHandlerRegistry registry) {
+		final ResourceResolver resolver = new ReactResourceResolver();
+		registry.addResourceHandler("/**").addResourceLocations("").resourceChain(true).addResolver(resolver);
+		registry.addResourceHandler("/admin/images/**")//
+				.addResourceLocations("file:" + Admin.PATH_AVARTAR_ADMIN_USER.toFile().getPath() + File.separator)//
+				.setCachePeriod(0);
+		registry.addResourceHandler("/book/images/**")//
+				.addResourceLocations("file:" + Book.PATH_BOOK_COVER.toFile().getPath() + File.separator)//
+				.setCachePeriod(0);
+	}
 
 }

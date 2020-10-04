@@ -12,11 +12,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.dinz.library.common.APIResult;
 import com.dinz.library.common.APIResultMessage;
 import com.dinz.library.dto.PageDTO;
+import com.dinz.library.exception.NotFoundEntityException;
 import com.dinz.library.model.Book;
 import com.dinz.library.service.BookService;
 
@@ -49,8 +53,19 @@ public class BookAPI {
 
 	@PostMapping(value = "/book")
 	public APIResult insertBook(@RequestBody Book book) {
-//    	return APIResult()
-		System.out.println(book);
-		return null;
+		this.bookService.insert(book);
+		return new APIResult(APIResultMessage.SUCCESS, book);
 	}
+
+	@PostMapping(value = "/upload-image")
+	public APIResult uploadImageBook(@RequestParam("id") Long id, @RequestPart MultipartFile image) {
+		Book book = bookService.findById(id);
+		if (null != book) {
+			book.uploadImage(image);
+			return new APIResult(APIResultMessage.UPDATE_SUCCESS, null);
+		} else {
+			throw new NotFoundEntityException();
+		}
+	}
+
 }

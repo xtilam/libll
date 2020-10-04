@@ -289,6 +289,6 @@ public class AdminAPI {
 
 	@GetMapping(value = "/test")
 	public APIResult test() {
-		return new APIResult(APIResultMessage.FAILED, this.permissionCache.permissionCache);
+		return new APIResult(APIResultMessage.FAILED, this.adminCache.getCacheMap());
 	}
 }

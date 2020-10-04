@@ -5,10 +5,12 @@
  */
 package com.dinz.library.service;
 
-import com.dinz.library.model.Publisher;
 import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import com.dinz.library.model.Publisher;
 
 /**
  *
@@ -16,9 +18,11 @@ import org.springframework.data.domain.Pageable;
  */
 public interface PublisherService {
 
-    public List<Publisher> getPublishers();
+	public List<Publisher> getPublishers();
 
-    public Page<Publisher> getPublishers(Pageable page);
-    
-    public Page<Publisher> findLastPage(int limit);
+	public Page<Publisher> getPublishers(Pageable page);
+
+	public Page<Publisher> findLastPage(int limit);
+
+	public Publisher findById(Long id);
 }

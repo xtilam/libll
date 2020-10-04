@@ -15,7 +15,7 @@ public interface AuthorService {
 
 	Page<Author> findAll(Pageable page);
 
-	List<Author> findAuthorById(Long id);
+	Author findAuthorById(Long id);
 
 	Page<Author> findLastPage(int limit);
 }

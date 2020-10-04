@@ -13,7 +13,7 @@ import com.dinz.library.model.Author;
 @Repository
 public interface AuthorRepository extends org.springframework.data.repository.Repository<Author, Long> {
 	@Query(value = "select a from Author a where a.deleteStatus = 0 and a.id = :id")
-	List<Author> findAuthorById(@Param("id") Long id);
+	Author findAuthorById(@Param("id") Long id);
 
 	@Query(value = "select a from Author a where a.deleteStatus = 0")
 	Page<Author> findAll(Pageable page);

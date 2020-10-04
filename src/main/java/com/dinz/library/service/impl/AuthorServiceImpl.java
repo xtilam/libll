@@ -20,7 +20,7 @@ public class AuthorServiceImpl implements AuthorService {
 	AuthorRepository authorRepo;
 
 	@Override
-	public List<Author> findAuthorById(Long id) {
+	public Author findAuthorById(Long id) {
 		return authorRepo.findAuthorById(id);
 	}
 

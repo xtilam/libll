@@ -21,4 +21,6 @@ public interface CategoryService {
     public Page<Category> findCategories(Pageable page);
     
     public Page<Category> findLastPage(int limit);
+
+	Category findById(Long id);
 }
