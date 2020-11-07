@@ -17,8 +17,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import com.dinz.library.AdminUserDetails;
 import com.dinz.library.common.Utils;
 import com.dinz.library.model.Admin;
 import com.dinz.library.model.GroupAdmin;
@@ -30,7 +35,7 @@ import com.dinz.library.service.PermissionService;
 
 @Service
 @Transactional
-public class AdminServiceImpl implements AdminService {
+public class AdminServiceImpl extends AdminService implements UserDetailsService {
 
 	@Autowired
 	AdminRepository adminRepository;
@@ -58,7 +63,9 @@ public class AdminServiceImpl implements AdminService {
 		if (id > 0) {
 			return this.em.createQuery(QueryString.RESET_PASSWORD).setParameter("id", id)
 					.setParameter("modifiedDate", new Date()).setParameter("newPassword", password)
-					.setParameter("modifiedBy", this.session.getAttribute("adminCode").toString()).executeUpdate();
+					.setParameter("modifiedBy",
+							((AdminUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()))
+					.executeUpdate();
 		}
 		return 0;
 	}
@@ -108,8 +115,8 @@ public class AdminServiceImpl implements AdminService {
 	@Override
 	public int insert(Admin adminUser) {
 		Date createDate = new Date();
-		Admin admin = new Admin((Long) this.session.getAttribute("adminId"),
-				this.session.getAttribute("adminCode").toString());
+		Admin admin = ((AdminUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal())
+				.getAdmin();
 		adminUser.setId(Utils.getRandomId());
 		adminUser.setCreateBy(admin.getAdminCode());
 		adminUser.setModifiedBy(admin.getAdminCode());
@@ -124,14 +131,18 @@ public class AdminServiceImpl implements AdminService {
 	public int update(Admin adminUser) {
 		return this.adminRepository.update(adminUser.getId(), adminUser.getEmail(), adminUser.getFullname(),
 				adminUser.getGender(), adminUser.getPhone(), adminUser.getAddress(), adminUser.getDateOfBirth(),
-				session.getAttribute("adminCode").toString(), new Date());
+				((AdminUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getAdmin()
+						.getAdminCode(),
+				new Date());
 	}
 
 	@Transactional
 	@Override
 	public int changePassword(String oldPassword, String newPassword) {
 		return this.em.createQuery(QueryString.CHANGE_PASSWORD)//
-				.setParameter("id", this.session.getAttribute("adminId"))//
+				.setParameter("id",
+						((AdminUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal())
+								.getAdmin().getId())//
 				.setParameter("newPassword", newPassword)//
 				.setParameter("oldPassword", oldPassword)//
 				.executeUpdate();
@@ -142,7 +153,9 @@ public class AdminServiceImpl implements AdminService {
 	public int delete(Long id) {
 		if (id > 0) {
 			return this.em.createQuery(QueryString.DELETE).setParameter("deleteStatus", 2).setParameter("id", id)
-					.setParameter("modifiedBy", this.session.getAttribute("adminCode"))
+					.setParameter("modifiedBy",
+							((AdminUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal())
+									.getAdmin().getAdminCode())
 					.setParameter("modifiedDate", new Date()).executeUpdate();
 
 		}
@@ -174,21 +187,21 @@ public class AdminServiceImpl implements AdminService {
 		int size = permissionCodes.size();
 		String[] permissions = new String[size];
 		int count = 0;
+
 		for (Iterator<Long> iterator = permissionCodes.iterator(); iterator.hasNext();) {
 			permissions[count++] = this.permissionService.findPermissionUpdate(iterator.next()).get("code").toString();
 		}
+
 		this.adminRepository.deleteAllPermissionAdmin(adminId);
+
 		for (String pCode : permissions) {
 			this.adminRepository.insertPermissionAdmin(Utils.getRandomId(), adminCode, pCode);
 		}
 		this.em.createQuery("update Admin a set a.modifiedBy = :modifiedBy, a.modifiedDate = :modifiedDate")//
-				.setParameter("modifiedBy", this.session.getAttribute("adminCode"))
+				.setParameter("modifiedBy",
+						((AdminUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal())
+								.getAdmin().getAdminCode())
 				.setParameter("modifiedDate", new Date()).executeUpdate();
-	}
-
-	@Override
-	public Set<Long> getAllPermission(String adminCode) {
-		return adminRepository.getAllPermission(adminCode);
 	}
 
 	@Override
@@ -202,11 +215,11 @@ public class AdminServiceImpl implements AdminService {
 	}
 
 	@Override
-	public List<Map<String, Object>> getAllGroup(String adminCode) {
-//        this.em.createQuery("select A.id as id, A.address as ads from Admin A JOIN FETCH A.groupAdmin ga where ga.");
-		return this.adminRepository.getAllGroup(adminCode);
+	public List<Map<String, Object>> getAllGroup(Long id) {
+		return this.adminRepository.getAllGroup(id);
 	}
 
+	@Transactional
 	@Override
 	public void updateAdminGroups(Long adminId, Set<Long> groupIds) {
 		String adminCode = this.adminRepository.findByIdFilter(adminId).get("adminCode").toString();
@@ -214,14 +227,16 @@ public class AdminServiceImpl implements AdminService {
 		String[] groups = new String[size];
 		int count = 0;
 		for (Iterator<Long> iterator = groupIds.iterator(); iterator.hasNext();) {
-			groups[count++] = this.groupService.findGroupUseForUpdate(iterator.next()).get("groupCode").toString();
+			groups[count++] = this.groupService.findById(iterator.next()).get("groupCode").toString();
 		}
 		this.adminRepository.deleteAllGroupAdmin(adminCode);
 		for (String gCode : groups) {
 			this.adminRepository.insertGroupAdmin(GroupAdmin.createNew(gCode, adminCode));
 		}
 		this.em.createQuery("update Admin a set a.modifiedBy = :modifiedBy, a.modifiedDate = :modifiedDate")//
-				.setParameter("modifiedBy", this.session.getAttribute("adminCode"))
+				.setParameter("modifiedBy",
+						((AdminUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal())
+								.getAdmin().getAdminCode())
 				.setParameter("modifiedDate", new Date()).executeUpdate();
 	}
 
@@ -238,6 +253,11 @@ public class AdminServiceImpl implements AdminService {
 		static String DELETE = "update Admin a set"//
 				+ " a.deleteStatus = :deleteStatus" //
 				+ ",a.modifiedBy = :modifiedBy" + ",a.modifiedDate = :modifiedDate" + " where a.id = :id";
+	}
+
+	@Override
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		return (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 	}
 
 }

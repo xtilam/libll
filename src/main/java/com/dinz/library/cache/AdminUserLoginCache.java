@@ -5,10 +5,15 @@
  */
 package com.dinz.library.cache;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
@@ -25,126 +30,167 @@ import com.dinz.library.service.AdminService;
 @Component
 public class AdminUserLoginCache {
 
-	@Autowired
-	HttpSession session;
+    @Autowired
+    HttpSession session;
 
-	@Autowired
-	HttpServletRequest httpServletRequest;
+    @Autowired
+    HttpServletRequest httpServletRequest;
 
-	@Autowired
-	AdminService adminService;
+    @Autowired
+    AdminService adminService;
 
-	// userid , thông tin các token đang được sử dụng
-	final Map<Long, IAdminLoginSession> adminLoginCache = new HashMap<>();
+    @PersistenceContext
+    EntityManager em;
 
-	public AdminUserLoginCache() {
-		AdminLoginSession adminLoginSession = new AdminLoginSession();
-		AdminLoginInfo adminLoginInfo = new AdminLoginInfo("-", "-");
-		adminLoginInfo.setLastUsed(System.currentTimeMillis());
-		adminLoginCache.put(571747939356005L, adminLoginSession);
-		adminLoginSession.getTokens().put(3092678241171455L, adminLoginInfo);
-	}
+    public final Map<Long, IAdminLoginSession> adminLoginCache = new HashMap<>();
+    public final Map<String, Set<String>> permissionGroup = new HashMap<String, Set<String>>() {
+        private static final long serialVersionUID = 1L;
+        private boolean shouldRefresh = false;
+        private final String hqlGroup = "select p.name, g.name from Permission p"
+                + " inner join GroupPermission gp on gp.permission.permissionCode = p.permissionCode"
+                + " inner join Group g on g.groupCode = gp.group.groupCode"
+                + " where g.deleteStatus = 0 and p.deleteStatus = 0";
 
-	public void clearAllPermission() {
-		synchronized (this.adminLoginCache) {
-			this.adminLoginCache.forEach((id, iASession) -> {
-				if (iASession instanceof AdminLoginSession) {
-					((AdminLoginSession) iASession).clearPermission();
-				}
-			});
-		}
-	}
+        public synchronized void refreshMap() {
+            try {
+                this.shouldRefresh = false;
+                Iterator<Object[]> iterator = em.createQuery(this.hqlGroup, Object[].class).getResultList().iterator();
+                this.clear();
+                while (iterator.hasNext()) {
+                    Object[] val = iterator.next();
+                    Set<String> groups = this.get(val[0].toString());
+                    if (groups == null) {
+                        groups = new HashSet<>();
+                        this.put(val[0].toString(), groups);
+                    }
+                    groups.add(val[1].toString());
+                }
+            } catch (Exception e) {
+                shouldRefresh = true;
+                System.err.println("group-permission-err: " + e.getMessage());
+            }
+        }
 
-	public Map<Long, IAdminLoginSession> getCacheMap() {
-		return adminLoginCache;
-	}
+        @Override
+        public java.util.Set<String> get(Object key) {
+            synchronized (this) {
+                if (this.shouldRefresh) {
+                    this.refreshMap();
+                }
+            }
+            return super.get(key);
+        }
 
-	public int deleteUser(Long userId) {
-		int removeResult = this.adminService.delete(userId);
-		if (removeResult > 0) {
-			synchronized (this.adminLoginCache) {
-				IDeathAdmin death = new IDeathAdmin() {
-				};
-				this.adminLoginCache.put(userId, death);
-			}
-		}
-		return removeResult;
-	}
+        ;
+    };
 
-	/**
-	 * Kiểm tra token có hợp lệ hay không và nếu hợp lệ thì lưu lại thông tin về
-	 * phiên sử dụng lần cuối của token đó
-	 *
-	 * @return
-	 */
-	public boolean checkTokenValidAndUpdateIt() {
-		Long adminId = (Long) session.getAttribute("adminId");
-		Long tokenId = (Long) session.getAttribute("tokenId");
-		IAdminLoginSession iASession = this.adminLoginCache.get(adminId);
+    public AdminUserLoginCache() {
+        AdminLoginSession adminLoginSession = new AdminLoginSession();
+        AdminLoginInfo adminLoginInfo = new AdminLoginInfo("-", "-");
+        adminLoginInfo.setLastUsed(System.currentTimeMillis());
+        this.adminLoginCache.put(-1L, adminLoginSession);
+        adminLoginSession.getTokens().put(4009655566178114L, adminLoginInfo);
 
-		if (iASession instanceof AdminLoginSession) {
-			return ((AdminLoginSession) iASession).updateToken(tokenId, this.httpServletRequest);
-		}
-		return false;
-	}
+        adminLoginSession = new AdminLoginSession();
+        adminLoginInfo = new AdminLoginInfo("-", "-");
+        adminLoginInfo.setLastUsed(System.currentTimeMillis());
+        this.adminLoginCache.put(571747939356005L, adminLoginSession);
+        adminLoginSession.getTokens().put(4019904466674714L, adminLoginInfo);
+    }
 
-	public void clearPermission(Long userId) {
-		synchronized (this.adminLoginCache) {
-			IAdminLoginSession iASession = this.adminLoginCache.get(userId);
-			if (iASession instanceof AdminLoginSession) {
-				((AdminLoginSession) iASession).clearPermission();
-			}
-		}
-	}
+    public boolean checkPermission(Long adminId, String permission) {
+        IAdminLoginSession adminSession = this.adminLoginCache.get(adminId);
+        if (adminSession instanceof AdminLoginSession) {
+            return adminSession.checkPermission(permission, adminId);
+        }
+        return false;
+    }
 
-	public Set<Long> getAdminUsersId() {
-		return this.adminLoginCache.keySet();
-	}
+    public void cleanListGroupOfUser(Long adminId) {
+        synchronized (this.adminLoginCache) {
+            this.adminLoginCache.forEach((id, iASession) -> {
+                if (iASession instanceof AdminLoginSession) {
+                    ((IAdminLoginSession) iASession).clearGroups();
+                }
+            });
+        }
+    }
 
-	public Set<Long> getPermissions() {
-		AdminLoginSession aSession = (AdminLoginSession) this.session.getAttribute("adminSession");
-		if (aSession != null) {
-			return aSession.getPermissions(this.session.getAttribute("adminCode").toString(), this);
-		}
-		return null;
-	}
+    public void cleanListPermissionOfUser(Long adminId) {
+        synchronized (this.adminLoginCache) {
+            this.adminLoginCache.forEach((id, iASession) -> {
+                if (iASession instanceof AdminLoginSession) {
+                    ((IAdminLoginSession) iASession).clearPermissions();
+                }
+            });
+        }
+    }
 
-	public boolean updateAdminPermissions(Long userId, Set<Long> permissions) {
-		try {
-			this.adminService.updateAdminPermissions(userId, permissions);
-			IAdminLoginSession iASession = this.adminLoginCache.get(userId);
-			if (iASession instanceof AdminLoginSession) {
-				((AdminLoginSession) iASession).clearPermission();
-			}
-			return true;
-		} catch (Exception e) {
-			return false;
-		}
-	}
+    public void refeshPermissionGroupMap() {
+        try {
+            Method method = this.permissionGroup.getClass().getDeclaredMethod("refreshMap");
+            method.invoke(this.permissionGroup);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-	public void removeToken() {
-		((AdminLoginSession) this.session.getAttribute("adminSession"))//
-				.removeToken((Long) this.session.getAttribute("tokenId"));
-	}
+    public Map<Long, IAdminLoginSession> getCacheMap() {
+        return this.adminLoginCache;
+    }
 
-	public boolean adminUserLogin() {
-		Long userId = (Long) session.getAttribute("adminId");
-		AdminLoginSession adminSession;
+    public int deleteUser(Long userId) {
+        int removeResult = this.adminService.delete(userId);
+        if (removeResult > 0) {
+            synchronized (this.adminLoginCache) {
+                this.adminLoginCache.put(userId, new DeathAdminLoginSession(userId));
+            }
+        }
+        return removeResult;
+    }
 
-		synchronized (this.adminLoginCache) {
-			IAdminLoginSession iASession = this.adminLoginCache.get(userId);
-			if (iASession == null) {
-				adminSession = new AdminLoginSession();
-				this.adminLoginCache.put(userId, adminSession);
-			} else if (!(iASession instanceof IDeathAdmin)) {
-				adminSession = (AdminLoginSession) iASession;
-			} else {
-				return false;
-			}
-		}
+    public Set<String> getAllPermissions(Long userId) {
+        IAdminLoginSession aSession = this.getCacheMap().get(userId);
+        if (aSession instanceof AdminLoginSession) {
+            return ((AdminLoginSession) aSession).getAllPermission(userId);
+        }
+        return null;
+    }
 
-		Long token = adminSession.addToken(new AdminLoginInfo(this.httpServletRequest));
-		this.session.setAttribute("tokenId", token);
-		return true;
-	}
+    public boolean checkTokenValidAndUpdateIt(Long adminId, Long tokenId) {
+        IAdminLoginSession iASession = this.adminLoginCache.get(adminId);
+        if (iASession instanceof AdminLoginSession) {
+            return iASession.updateToken(tokenId, this.httpServletRequest, adminId, this);
+        }
+        return false;
+    }
+
+    public Set<Long> getAdminUsersId() {
+        return this.adminLoginCache.keySet();
+    }
+
+    public void removeToken(Long adminId, Long tokenId) {
+        IAdminLoginSession adminSession = this.adminLoginCache.get(adminId);
+        if (adminSession instanceof AdminLoginSession) {
+            adminSession.removeToken(tokenId);
+        }
+    }
+
+    public Long adminUserLogin(Long userId) {
+        IAdminLoginSession adminSession = null;
+
+        synchronized (this.adminLoginCache) {
+            adminSession = this.adminLoginCache.get(userId);
+            if (adminSession == null) {
+                adminSession = new AdminLoginSession();
+                this.adminLoginCache.put(userId, adminSession);
+            } else if (!(adminSession instanceof AdminLoginSession)) {
+                return null;
+            }
+        }
+
+        Long token = adminSession.addToken(new AdminLoginInfo(this.httpServletRequest));
+
+        return token;
+    }
 }

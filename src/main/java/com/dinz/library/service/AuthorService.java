@@ -7,15 +7,6 @@ import org.springframework.data.domain.Pageable;
 
 import com.dinz.library.model.Author;
 
-public interface AuthorService {
+public interface AuthorService extends BaseService<Author>{
 
-	Integer countAll();
-
-	List<Author> findAll();
-
-	Page<Author> findAll(Pageable page);
-
-	Author findAuthorById(Long id);
-
-	Page<Author> findLastPage(int limit);
 }

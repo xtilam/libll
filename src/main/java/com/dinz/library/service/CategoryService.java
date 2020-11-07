@@ -14,13 +14,6 @@ import org.springframework.data.domain.Pageable;
  *
  * @author DinzeniLL
  */
-public interface CategoryService {
+public interface CategoryService extends BaseService<Category>{
 
-    public List<Category> findCategories();
-
-    public Page<Category> findCategories(Pageable page);
-    
-    public Page<Category> findLastPage(int limit);
-
-	Category findById(Long id);
 }

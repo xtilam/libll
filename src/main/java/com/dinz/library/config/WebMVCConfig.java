@@ -2,27 +2,35 @@ package com.dinz.library.config;
 
 import java.io.File;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.ResourceResolver;
 
-import com.dinz.library.inteceptor.AdminLoginInterceptor;
+import com.dinz.library.ReactResourceResolver;
 import com.dinz.library.model.Admin;
 import com.dinz.library.model.Book;
 
 @Configuration
 public class WebMVCConfig implements WebMvcConfigurer {
 
-	@Autowired
-	AdminLoginInterceptor adminLoginInterceptor;
-
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
-		registry.addInterceptor(adminLoginInterceptor).addPathPatterns("/api/admin/**")
-				.excludePathPatterns("/api/admin/login", "/api/admin/test");
+		registry.addInterceptor(new HandlerInterceptor() {
+			@Override
+			public boolean preHandle(HttpServletRequest request, HttpServletResponse resp, Object handler)
+					throws Exception {
+				resp.setHeader("Access-Control-Allow-Origin", "*");
+				resp.setHeader("Access-Control-Allow-Headers", "*");
+				resp.setHeader("Access-Control-Allow-Methods", "*");
+				return true;
+			}
+		});
 	}
 
 	@Override

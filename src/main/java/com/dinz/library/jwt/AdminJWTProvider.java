@@ -6,13 +6,17 @@
 package com.dinz.library.jwt;
 
 import java.util.Date;
-
-import javax.servlet.http.HttpSession;
-
-import com.dinz.library.constants.SystemConstants;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+
+import com.dinz.library.AdminUserDetails;
+import com.dinz.library.cache.AdminUserLoginCache;
+import com.dinz.library.constants.SystemConstants;
+import com.dinz.library.model.Admin;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -25,34 +29,49 @@ import io.jsonwebtoken.SignatureAlgorithm;
 @Component
 public class AdminJWTProvider {
 
-    private static Long MAX_TIME = 1000L * 3600 * 24 * 365 * 10;
+	@Autowired
+	AdminUserLoginCache adminCache;
 
-    @Autowired
-    HttpSession session;
+	private static Long MAX_TIME = 1000L * 3600 * 24 * 365 * 10;
 
-    public String generateToken() {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + MAX_TIME);
-        AdminJWTModel adminJWTModel = new AdminJWTModel(
-                (Long) session.getAttribute("adminId"),
-                (Long) session.getAttribute("tokenId"),
-                (String) session.getAttribute("adminCode")
-        );
-        String jwt = Jwts.builder()//
-                .setClaims(adminJWTModel.toMap())
-                .setIssuedAt(now)//
-                .setExpiration(expiryDate)//
-                .signWith(SignatureAlgorithm.HS512, SystemConstants.ADMIN_JWT_SECRET)// 
-                .compact();
-        return jwt;
-    }
+	public String generateToken(Admin admin, Long tokenId) {
+		Map<String, Object> map = new HashMap<>();
+		map.put("id", admin.getId());
+		map.put("adminCode", admin.getAdminCode());
+		map.put("tokenId", tokenId);
+		return this.generateToken(map);
+	}
 
-    public AdminJWTModel decodeToken(String token) {
-        try {
-            Claims claims = Jwts.parser().setSigningKey(SystemConstants.ADMIN_JWT_SECRET).parseClaimsJws(token).getBody();
-            return new AdminJWTModel(claims);
-        } catch (Exception ex) {
-        }
-        return null;
-    }
+	public String generateToken(Map<String, Object> adminMap, Long tokenId) {
+		Map<String, Object> map = new HashMap<>();
+		map.put("id", adminMap.get("id"));
+		map.put("code", adminMap.get("adminCode"));
+		map.put("tokenId", tokenId);
+		return this.generateToken(map);
+	}
+
+	private String generateToken(Map<String, Object> mapClaims) {
+		Date now = new Date();
+		Date expiryDate = new Date(now.getTime() + MAX_TIME);
+
+		String jwt = Jwts.builder()//
+				.setClaims(mapClaims).setIssuedAt(now)//
+				.setExpiration(expiryDate)//
+				.signWith(SignatureAlgorithm.HS512, SystemConstants.ADMIN_JWT_SECRET)//
+				.compact();
+		return jwt;
+	}
+
+	public UserDetails decodeToken(String token) {
+		try {
+			Claims claims = Jwts.parser().setSigningKey(SystemConstants.ADMIN_JWT_SECRET).parseClaimsJws(token)
+					.getBody();
+			AdminUserDetails adminUserDetails = new AdminUserDetails(
+					new Admin(new Long(claims.get("id").toString()), (String) claims.get("code")), //
+					adminCache, new Long(claims.get("tokenId").toString()));
+			return adminUserDetails;
+		} catch (Exception ex) {
+		}
+		return null;
+	}
 }

@@ -8,10 +8,7 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
-import org.hibernate.PropertyValueException;
-import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.dinz.library.cache.PermissionCache;
 import com.dinz.library.common.APIResult;
 import com.dinz.library.common.APIResultMessage;
 import com.dinz.library.dto.IdsDTO;
@@ -45,29 +41,13 @@ public class PermissionAPI {
 	@Autowired
 	HttpServletRequest request;
 
-	@Autowired
-	PermissionCache permissionCache;
-
 	@PostMapping(value = "/permission")
 	public APIResult insertPermission(@RequestBody PermissionDTO perDTO) {
 		Permission permission = perDTO.convert();
-		boolean isInsertSuccess = false;
-		String error = "";
-
-		try {
-			isInsertSuccess = permissionCache.addPermission(permission) > 0;
-		} catch (javax.persistence.PersistenceException ex) {
-			error = APIUtils.getErrorPropertyValue((PropertyValueException) ex.getCause());
-		} catch (DataIntegrityViolationException ex) {
-			error = APIUtils.getErrorDataIntegrityViolation(ex);
-		} catch (Exception e) {
-			error = e.getMessage();
-		}
-
-		if (isInsertSuccess) {
-			return new APIResult(APIResultMessage.of(APIResultMessage.INSERT_SUCCESS), error);
+		if (permissionService.insert(permission) > 0) {
+			return new APIResult(APIResultMessage.INSERT_FAILED);
 		} else {
-			return new APIResult(APIResultMessage.of(APIResultMessage.INSERT_FAILED), error);
+			return new APIResult(APIResultMessage.INSERT_FAILED);
 		}
 	}
 
@@ -88,11 +68,7 @@ public class PermissionAPI {
 
 	@GetMapping(value = "permission")
 	public APIResult getPermission(@RequestParam(name = "id") Long id) {
-		try {
-			return new APIResult(APIResultMessage.SUCCESS, permissionService.findPermissionUpdate(id));
-		} catch (Exception e) {
-			return new APIResult(APIResultMessage.NOT_FOUND_ITEM, e.toString());
-		}
+		return new APIResult(APIResultMessage.SUCCESS, permissionService.findPermissionUpdate(id));
 	}
 
 	@DeleteMapping(value = "/permissions")
@@ -102,7 +78,7 @@ public class PermissionAPI {
 			List<Long> deleteFailed = new ArrayList<>();
 			List<Long> deleteSuccess = new ArrayList<>();
 			for (Long id : ids) {
-				if (this.permissionCache.deletePermission(id) > 0) {
+				if (this.permissionService.delete(id) > 0) {
 					deleteSuccess.add(id);
 				} else {
 					deleteFailed.add(id);
@@ -111,35 +87,20 @@ public class PermissionAPI {
 			Map<String, List<Long>> data = new HashMap<>();
 			data.put("success", deleteSuccess);
 			data.put("fail", deleteFailed);
-			return new APIResult(APIResultMessage.of(APIResultMessage.SUCCESS), data);
+			return new APIResult(APIResultMessage.SUCCESS, data);
 		} else {
-			return new APIResult(APIResultMessage.of(APIResultMessage.FAILED), "");
+			return new APIResult(APIResultMessage.FAILED);
 		}
 	}
 
 	@PutMapping(value = "/permission")
 	public APIResult udpatePermissions(@RequestBody PermissionDTO permissionDTO) {
 		Permission convert = permissionDTO.convert();
-		boolean isUpdateSuccess = false;
-		String error = "";
 
-		try {
-			isUpdateSuccess = this.permissionCache.updatePermission(convert) > 0;
-		} catch (DataIntegrityViolationException e) {
-			error = APIUtils.getErrorDataIntegrityViolation(e);
-		} catch (Exception e) {
-			if (e.getCause() instanceof ConstraintViolationException) {
-				error = APIUtils.getErrorDataIntegrityViolation((ConstraintViolationException) e.getCause());
-			} else {
-				error = "__" + e.getMessage();
-			}
-
-		}
-
-		if (isUpdateSuccess) {
-			return new APIResult(APIResultMessage.of(APIResultMessage.UPDATE_SUCCESS), null);
+		if (this.permissionService.update(convert) > 0) {
+			return new APIResult(APIResultMessage.UPDATE_SUCCESS);
 		} else {
-			return new APIResult(APIResultMessage.of(APIResultMessage.UPDATE_FAILED), error);
+			return new APIResult(APIResultMessage.UPDATE_FAILED);
 		}
 
 	}

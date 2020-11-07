@@ -9,36 +9,35 @@ import org.springframework.data.domain.Pageable;
 
 import com.dinz.library.model.Admin;
 
-public interface AdminService {
-    public List<Map<String, Object>> findAll();
+public abstract class AdminService {
+	public abstract List<Map<String, Object>> findAll();
 
-    public Page<Map<String, Object>> findWithPagination(Pageable pageable);
+	public abstract Page<Map<String, Object>> findWithPagination(Pageable pageable);
 
-    public Page<Map<String, Object>> findLastPage(int limit);
+	public abstract Page<Map<String, Object>> findLastPage(int limit);
 
-    public int insert(Admin adminUser);
+	public abstract int insert(Admin adminUser);
 
-    public int update(Admin adminUser);
+	public abstract int update(Admin adminUser);
 
-    public int changePassword(String oldPassword, String newPassword);
+	public abstract int changePassword(String oldPassword, String newPassword);
 
-    public int delete(Long adminId);
+	public abstract int delete(Long adminId);
 
-    public Map<String, Object> checkLogin(Admin admin);
-    
-    public Map<String, Object> findAdminUser(Long id);
-    
-    public Map<String, Object> findAdminUserByAdminCode(String adminCode);
+	public abstract Map<String, Object> checkLogin(Admin admin);
 
-    public int resetPassword(Long id, String password);
-    
-    public Set<Long> getAllPermission(String adminCode);
+	public abstract Map<String, Object> findAdminUser(Long id);
 
-    public List<Map<String, Object>> getAllAdminPermission(Long adminId);
-    
-    public void updateAdminPermissions(Long adminId, Set<Long> permissionCodes);
-    
-    public List<Map<String, Object>> getAllGroup(String adminCode);
-    
-    public void updateAdminGroups(Long adminId, Set<Long> groupIds);
+	public abstract Map<String, Object> findAdminUserByAdminCode(String adminCode);
+
+	public abstract int resetPassword(Long id, String password);
+
+	public abstract List<Map<String, Object>> getAllAdminPermission(Long adminId);
+
+	public abstract void updateAdminPermissions(Long adminId, Set<Long> permissionCodes);
+
+	public abstract List<Map<String, Object>> getAllGroup(Long userId);
+
+	public abstract void updateAdminGroups(Long adminId, Set<Long> groupIds);
+
 }

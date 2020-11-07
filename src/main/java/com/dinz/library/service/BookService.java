@@ -17,18 +17,6 @@ import com.dinz.library.model.Book;
  *
  * @author DinzeniLL
  */
-public interface BookService {
-	public Page<Book> findBooks(Pageable page);
+public interface BookService extends BaseService<Book>{
 
-	public List<Book> findBooks();
-
-	public Page<Book> findBooksLastPage(int limit);
-
-	public void insert(Book book);
-
-	public int update(Book book);
-
-	public int delete(Book book);
-
-	public Book findById(Long id);
 }

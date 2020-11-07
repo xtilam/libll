@@ -1,7 +1,9 @@
 package com.dinz.library.api.admin;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.Page;
 
 import com.dinz.library.common.APIResult;
 import com.dinz.library.common.APIResultMessage;
+import com.dinz.library.function.DeleteByIdAction;
 import com.dinz.library.model.PropertyName;
 
 public class APIUtils {
@@ -105,5 +108,21 @@ public class APIUtils {
 					.appendData("page", result.getPageable().getPageNumber() + 1)
 					.appendData("totalPage", result.getTotalPages()), "[]");
 		}
+	}
+
+	public static APIResult deleteIds(DeleteByIdAction action, Long[] ids) {
+		Map<String, Object> mapResult = new HashMap<>();
+		List<Long> success = new ArrayList<>();
+		List<Long> fail = new ArrayList<>();
+		mapResult.put("success", success);
+		mapResult.put("fail", fail);
+		for (Long id : ids) {
+			if (action.delete(id) == 0) {
+				fail.add(id);
+			} else {
+				success.add(id);
+			}
+		}
+		return new APIResult(APIResultMessage.DELETE_SUCCESS, mapResult);
 	}
 }

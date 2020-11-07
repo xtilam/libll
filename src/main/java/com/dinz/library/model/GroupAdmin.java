@@ -6,6 +6,7 @@
 package com.dinz.library.model;
 
 import com.dinz.library.common.Utils;
+import com.dinz.library.common.Utils;
 import java.io.Serializable;
 import java.util.Objects;
 import javax.persistence.Column;

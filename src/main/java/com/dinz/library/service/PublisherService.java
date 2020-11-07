@@ -5,24 +5,12 @@
  */
 package com.dinz.library.service;
 
-import java.util.List;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-
 import com.dinz.library.model.Publisher;
 
 /**
  *
  * @author DinzeniLL
  */
-public interface PublisherService {
+public interface PublisherService extends BaseService<Publisher> {
 
-	public List<Publisher> getPublishers();
-
-	public Page<Publisher> getPublishers(Pageable page);
-
-	public Page<Publisher> findLastPage(int limit);
-
-	public Publisher findById(Long id);
 }

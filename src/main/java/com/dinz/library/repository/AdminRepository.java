@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +18,9 @@ import com.dinz.library.model.GroupAdmin;
 
 @org.springframework.stereotype.Repository
 public interface AdminRepository extends Repository<Admin, Long> {
+
+	@Query(value = "select a.id as id, a.fullname as fullname from Admin a")
+	public Stream<Object[]> findAllc();
 
 	@Query(value = QueryString.FIND_ALL)
 	List<Map<String, Object>> findAllFilter();
@@ -47,7 +51,7 @@ public interface AdminRepository extends Repository<Admin, Long> {
 	List<Map<String, Object>> getAllAdminPermission(@Param("adminId") Long id);
 
 	@Query(value = QueryString.GET_ALL_GROUP)
-	List<Map<String, Object>> getAllGroup(@Param("adminCode") String adminCode);
+	List<Map<String, Object>> getAllGroup(@Param("adminId") Long id);
 
 	@Modifying
 	@Query(value = "delete from PermissionAdmin pa where pa.admin.adminCode in (select a.adminCode from Admin a where a.id=:id)")
@@ -100,8 +104,6 @@ public interface AdminRepository extends Repository<Admin, Long> {
 				+ " p.permissionCode as code"//
 				+ ",p.name as name"//
 				+ ",p.description as description"//
-				+ ",p.api as api"//
-				+ ",p.method as method"//
 				+ ",p.id as id"//
 				+ ",case when count(a.adminCode) > 0 then true else false end as isAllow" + " from Permission p" //
 				+ " left join PermissionAdmin pa on pa.permission.permissionCode = p.permissionCode"//
@@ -122,7 +124,8 @@ public interface AdminRepository extends Repository<Admin, Long> {
 				+ ",g.id as id"//
 				+ ",count(ga.adminCode) > 0 as isAllow"//
 				+ " from Group g"//
-				+ " left join GroupAdmin ga on ga.group.groupCode = g.groupCode and ga.admin.adminCode = :adminCode"//
+				+ " left join GroupAdmin ga on ga.group.groupCode = g.groupCode"//
+				+ " left join Admin a on a.id = :adminId and a.deleteStatus = 0 and a.adminCode = ga.admin.adminCode"
 				+ " where g.deleteStatus = 0"//
 				+ " group by g.id " + "order by isAllow desc";
 		static String DELETE_ALL_GROUP = "delete GroupAdmin ga where ga.adminCode = :adminCode";
